@@ -91,6 +91,48 @@ class ChatConsumer(SyncConsumer):
             RoomMessage.objects.create(sender=profile, text=msg_text, dest_room=dest)
 
     @classmethod
+    def create_chat_room(cls, channel_layer, cr):
+        msg_data = {
+            "type": "chatsignal",
+            "text": cls.encode_json({
+                "msg_type": "chatroom_created",
+                "id": cr.id,
+                "name": cr.name,
+                "owner_id": cr.owner.id,
+            })
+        }
+
+        async_to_sync(channel_layer.group_send)('events', msg_data)
+
+    @classmethod
+    def change_chat_room(cls, channel_layer, cr):
+        msg_data = {
+            "type": "chatsignal",
+            "text": cls.encode_json({
+                "msg_type": "chatroom_changed",
+                "id": cr.id,
+                "name": cr.name,
+                "owner_id": cr.owner.id,
+            })
+        }
+
+        async_to_sync(channel_layer.group_send)('events', msg_data)
+
+    @classmethod
+    def delete_chat_room(cls, channel_layer, cr):
+        msg_data = {
+            "type": "chatsignal",
+            "text": cls.encode_json({
+                "msg_type": "chatroom_deleted",
+                "id": cr.id,
+                "name": cr.name,
+                "owner_id": cr.owner.id,
+            })
+        }
+
+        async_to_sync(channel_layer.group_send)('events', msg_data)
+
+    @classmethod
     def send_personal_message(cls, channel_layer, pm):
         sender_id = pm.sender.id
         group_name_sender = cls.get_single_group_for_profile(sender_id)
@@ -111,21 +153,6 @@ class ChatConsumer(SyncConsumer):
 
         async_to_sync(channel_layer.group_send)(group_name_sender, msg_data)
         async_to_sync(channel_layer.group_send)(group_name_dest, msg_data)
-
-        # async_to_sync(channel_layer.group_send)(
-        #     group_name,
-        #     {
-        #         # "type": "websocket.send",
-        #         "type": "chatsignal",
-        #         "text": cls.encode_json({
-        #           "msg_type": "message_created",
-        #           "username": pm.sender.user.username,
-        #           "sender_id": pm.sender.id,
-        #           "text": pm.text
-        #         })
-        #     }
-        # )
-
 
     @classmethod
     def send_room_message(cls, channel_layer, rm):
@@ -157,27 +184,6 @@ class ChatConsumer(SyncConsumer):
             print(msg_data)
 
             async_to_sync(channel_layer.group_send)(curr_group_name, msg_data)
-            # async_to_sync(channel_layer.group_send)('events', msg_data)
-
-            # async_to_sync(
-            #     channel_layer.group_send(curr_group_name, msg)
-                # channel_layer.group_send('events', msg_data)
-            # )
-
-            # async_to_sync(
-            #     channel_layer.group_send(curr_group_name,
-            #         {
-            #           # "type": "websocket.send",
-            #           "type": "chatsignal",
-            #           "text": cls.encode_json({
-            #               "msg_type": "message_created",
-            #               "username": rm.sender.user.username,
-            #               "sender_id": rm.sender.id,
-            #               "text": rm.text
-            #           })
-            #         }
-            #     )
-            # )
 
     @classmethod
     def get_single_group_for_profile(self, profile_id):

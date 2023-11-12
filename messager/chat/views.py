@@ -42,8 +42,11 @@ def get_chat_user_l(request):
 
 
 def get_chat_room_l(request):
-    qs = ChatRoom.objects.all().values("id", "name")
-    data = list(qs)
+    # qs = ChatRoom.objects.all().values("id", "name")
+    qs = ChatRoom.objects.all()
+    # qs = qs.annotate(owner_id=F('owner__id'))
+    values = ChatRoom.objects.all().values("id", "name", "owner_id")
+    data = list(values)
     # print(data)
     return JsonResponse(data, safe=False)  # or JsonResponse({'data': data})
 
@@ -52,7 +55,7 @@ def get_messages_for_profile(profile):
     sel_cat = profile.selected_category
     sel_chat = profile.selected_chat
 
-    print(f"get_messages_for_profile - start, {sel_cat}, {sel_chat}")
+    # print(f"get_messages_for_profile - start, {sel_cat}, {sel_chat}")
 
     if sel_cat == 0:
         # qs = PersonalMessage.objects.filter(dest_user=sel_chat)
@@ -63,8 +66,8 @@ def get_messages_for_profile(profile):
         qs = qs.annotate(username=F('sender__user__username'))
         values = qs.values("id", "text", "username")
         data = list(values)
-        print("get_messages_for_profile:")
-        print(data)
+        # print("get_messages_for_profile:")
+        # print(data)
         return data
     elif sel_cat == 1:
         qs = RoomMessage.objects.filter(dest_room=sel_chat).order_by("creation_date")
@@ -77,28 +80,62 @@ def get_messages_for_profile(profile):
 
 
 def select_chat(request, sel_cat, sel_chat):
-    # data = {
-    #     "sel_cat": sel_cat,
-    #     "sel_chat": sel_chat,
-    # }
     try:
         profile = request.user.profile
         profile.selected_category = sel_cat
         profile.selected_chat = sel_chat
         profile.save()
         # print(f"select_chat {sel_cat} | {sel_chat}")
-        print("before get_messages_for_profile")
+        # print("before get_messages_for_profile")
         messages = get_messages_for_profile(profile)
         data = {
             "valid": len(messages) > 0,
             "messages": messages
         }
-        print(data)
+        # print(data)
         return JsonResponse(data, status=200)
     except:
         return JsonResponse({}, status=204)
 
-    # return JsonResponse(data, safe=False)  # or JsonResponse({'data': data})
+def create_chat_room(request, name):
+    chatroom = ChatRoom.objects.create(name, owner=request.user.profile)
+    data = {
+        "id": chatroom.id,
+        "name": chatroom.name,
+        "owner_id": chatroom.owner.id
+    }
+    return JsonResponse(data, status=201)
+
+
+def change_chat_room(request, id, name):
+    chatroom = ChatRoom.objects.get(pk=id)
+    print(f"change_chat_room, owner_id={chatroom.owner.id}, profile_id={request.user.profile.id}")
+    if chatroom.owner.id == request.user.profile.id:
+        chatroom.name = name
+        chatroom.save()
+        data = {
+            "id": chatroom.id,
+            "name": chatroom.name,
+            "owner_id": chatroom.owner.id
+        }
+
+        return JsonResponse(data, status=200)
+    else:
+        return JsonResponse({}, status=403)
+
+def delete_chat_room(request, id):
+    chatroom = ChatRoom.objects.get(pk=id)
+    if chatroom.owner.id == request.user.profile.id:
+        data = {
+            "id": chatroom.id,
+            "name": chatroom.name,
+            "owner_id": chatroom.owner.id
+        }
+        chatroom.delete()
+
+        return JsonResponse(data, status=200)
+    else:
+        return JsonResponse({}, status=403)
 
 # class ChatUserViewset(viewsets.ModelViewSet):
 #     queryset = ChatUser.objects.all()

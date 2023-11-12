@@ -80,6 +80,7 @@ function init_user_list(){
   })
   .then((data) => {
     refreshUserList(data.list, data.me)
+    init_room_list()
     // changeProfile(1, '123')
   })
   .catch(() => {
@@ -98,6 +99,55 @@ function init_room_list(){
   })
   .catch(() => {
     console.log('init_room_list error') 
+  });
+}
+
+function messageCreateChatRoom(name){  
+  let url = `http://127.0.0.1:8000/chat_rooms/create/${name}/`
+
+  fetch(url)
+  .then((response) => {
+    const result = response.json();
+    return result;
+  })
+  .then((data) => {
+    console.log(data)
+  })
+  .catch(() => {
+    console.log('messageCreateChatRoom error') 
+  });
+}
+
+function messageChangeChatRoom(id, name){  
+  let url = `http://127.0.0.1:8000/chat_rooms/change/${id}/${name}/`
+
+  fetch(url)
+  .then((response) => {
+    const result = response.json();
+    return result;
+  })
+  .then((data) => {
+    console.log(data)
+    // alert(name)
+  })
+  .catch(() => {
+    console.log('messageChangeChatRoom error') 
+  });
+}
+
+function messageDeleteChatRoom(id){  
+  let url = `http://127.0.0.1:8000/chat_rooms/delete/${id}`
+
+  fetch(url)
+  .then((response) => {
+    const result = response.json();
+    return result;
+  })
+  .then((data) => {
+    console.log(data)
+  })
+  .catch(() => {
+    console.log('messageDeleteChatRoom error') 
   });
 }
 
@@ -123,14 +173,45 @@ function createUserElem(id, username){
   return newElem
 }
 
-function createRoomElem(id, name){
+function getInnerHTMLForRoomElem(id, name, owner_id){
+  if (owner_id == myProfileId){
+      return `<input type="text" id="room-elem-name-${id}" value="${name}" /><input type="button" id="room-elem-change-${id}" value="Изменить"/><input type="button" id="room-elem-delete-${id}" value="Удалить" />`
+  }else{
+    return `${name} (id = ${id})`
+  }
+}
+
+function createRoomElem(id, name, owner_id){
     let newElem = document.createElement("div");
     newElem.className = 'room-elem'
-    newElem.textContent = `${name} (id = ${id})`
+    newElem.innerHTML = getInnerHTMLForRoomElem(id, name, owner_id)
+    // newElem.textContent = `${name} (id = ${id})`
     newElem.id = `room-elem-${id}`
+    
     newElem.addEventListener('click', (event) => {
       select(1, id, newElem)
     })
+
+    console.log(newElem.children)
+
+    if (owner_id == myProfileId){
+      // let btnChange = document.getElementById(`room-elem-change-${id}`)
+      // let btnChange = newElem.getElementById(`room-elem-change-${id}`)
+      let btnChange = newElem.children[1]
+      btnChange.addEventListener('click', (event) => {
+        // let edtName = document.getElementById(`room-elem-name-${id}`)
+        // let edtName = newElem.getElementById(`room-elem-name-${id}`)
+        let edtName = newElem.children[0]
+        messageChangeChatRoom(id, edtName.value)
+      })
+
+      // let btnDelete = document.getElementById(`room-elem-delete-${id}`)
+      // let btnDelete = newElem.getElementById(`room-elem-delete-${id}`)
+      let btnDelete = newElem.children[2]
+      btnDelete.addEventListener('click', (event) => {
+        messageDeleteChatRoom(id)
+      })
+    }
 
     return newElem
 }
@@ -154,9 +235,11 @@ function refreshRoomList(rooms){
   deleteElementsOfClass('room-elem')
 
   rooms.forEach((currRoom) => {
-    let newElem = createRoomElem(currRoom.id, currRoom.name)
+    let newElem = createRoomElem(currRoom.id, currRoom.name, currRoom.owner_id)
     pnlRooms.append(newElem)
   })
+
+
 }
 
 function addProfile(id, username){
@@ -199,6 +282,39 @@ function changeProfile(id, username){
   }
 }
 
+function createChatRoom(id, name, owner_id){
+  let pnlRooms = document.getElementsByClassName('rooms-panel')[0]  
+  let newElem = createRoomElem(id, name, owner_id)
+  pnlRooms.append(newElem)
+}
+
+function changeChatRoom(id, name, owner_id){
+  let chatRoomElem = document.getElementById(`room-elem-${id}`)
+  if (chatRoomElem){
+    let pnlRoomElems = chatRoomElem.parentElement
+    let nextRoomElem = chatRoomElem.nextSibling
+    chatRoomElem.remove()
+    let newElem = createChatRoom(id, name, owner_id)
+    if (nextRoomElem){
+      nextRoomElem.before(newElem)
+    }else{
+      pnlRoomElems.append(newElem)  
+    }
+
+  }
+  // if (chatRoomElem){
+  //   chatRoomElem.innerHTML = getInnerHTMLForRoomElem(id, name, owner_id)
+  //   // chatRoomElem.textContent = `${name} (id = ${id})`
+  // }
+}
+
+function deleteChatRoom(id, name, owner_id){
+  let chatRoomElem = document.getElementById(`room-elem-${id}`)
+  if (chatRoomElem){
+    chatRoomElem.remove()
+  }  
+}
+
 function addMessage(username, text){
   let pnlMessages = document.getElementsByClassName('messages-panel')[0]
   let newElem = document.createElement("div");
@@ -225,6 +341,12 @@ function message_handler(data_text){
     changeProfile(data.id, data.username)
   } else if (data.msg_type == 'message_created'){
     addMessage(data.username, data.text)
+  } else if (data.msg_type == "chatroom_created") {
+    createChatRoom(data.id, data.name, data.owner_id)
+  } else if (data.msg_type == "chatroom_changed") {
+    changeChatRoom(data.id, data.name, data.owner_id)
+  } else if (data.msg_type == "chatroom_deleted") {
+    deleteChatRoom(data.id, data.name, data.owner_id)
   }else{
     // console.log(data_text)
   }
@@ -246,7 +368,7 @@ function initialize(){
   socket = new WebSocket('ws://127.0.0.1:8000/ws');
 
   init_user_list()
-  init_room_list()
+  // init_room_list()
 
   socket.onopen = function(e) {
     // socket.send(JSON.stringify({

@@ -1,4 +1,4 @@
-from django.db.models.signals import pre_save, post_save
+from django.db.models.signals import pre_save, post_save, pre_delete
 from django.dispatch import receiver
 from django.contrib.auth.models import User
 
@@ -67,48 +67,31 @@ def post_profile_changed(sender, instance, created, **kwargs):
     print(sender, instance, created)
     base_profile_changed(sender, instance, created, **kwargs)
 
+@receiver(post_save, sender=ChatRoom)
+def create_chat_room(sender, instance, created, **kwargs):
+    channel_layer = channels.layers.get_channel_layer()
+    if created:
+        ChatConsumer.create_chat_room(channel_layer, instance)
+    else:
+        ChatConsumer.change_chat_room(channel_layer, instance)
+
+
+@receiver(pre_delete, sender=ChatRoom)
+def log_deleted_question(sender, instance, using, **kwargs):
+    channel_layer = channels.layers.get_channel_layer()
+    ChatConsumer.delete_chat_room(channel_layer, instance)
+
+
 @receiver(post_save, sender=PersonalMessage)
-def create_user_profile(sender, instance, created, **kwargs):
+def create_personal_message(sender, instance, created, **kwargs):
     if created:
         channel_layer = channels.layers.get_channel_layer()
         ChatConsumer.send_personal_message(channel_layer, instance)
 
 
 @receiver(post_save, sender=RoomMessage)
-def create_user_profile(sender, instance, created, **kwargs):
+def create_room_message(sender, instance, created, **kwargs):
     if created:
         channel_layer = channels.layers.get_channel_layer()
         ChatConsumer.send_room_message(channel_layer, instance)
 
-        # dest_room_id = instance.dest_room.id
-        # dest_user_ids = Profile.objects.filter(selected_category=1, selected_chat=dest_room_id).values_list('id', flat=True)
-        #
-        # # print(f"send_room_message to {dest_user_ids}")
-        #
-        # for curr_dest_user_id in dest_user_ids:
-        #     print(f"send_room_message to {curr_dest_user_id}")
-        #     # curr_group_name = ChatConsumer.get_single_group_for_profile(curr_dest_user_id)
-        #     # print(f"send_room_message in {curr_group_name}")
-        #     # data = {
-        #     #     "valid": True,
-        #     #     "messages": []
-        #     # }
-        #
-        #     msg_data = {
-        #           # "type": "websocket.send",
-        #           "type": "chatsignal",
-        #           "text": json.dumps({
-        #               "msg_type": "message_created",
-        #               "username": instance.sender.user.username,
-        #               "sender_id": instance.sender.id,
-        #               "text": instance.text
-        #           })
-        #         }
-        #     print(msg_data)
-        #
-        #     channel_layer = channels.layers.get_channel_layer()
-        #     async_to_sync(channel_layer.group_send('events', msg_data))
-        #     # async_to_sync(
-        #     #     # channel_layer.group_send(curr_group_name, msg)
-        #     #     channel_layer.group_send('events', msg_data)
-        #     # )

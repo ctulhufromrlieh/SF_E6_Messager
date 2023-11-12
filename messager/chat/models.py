@@ -22,6 +22,7 @@ class Profile(models.Model):
 
 class ChatRoom(models.Model):
     name = models.CharField(max_length=255, unique=True)
+    owner = models.ForeignKey(Profile, on_delete=models.CASCADE)
 
 
 class PersonalMessage(models.Model):
