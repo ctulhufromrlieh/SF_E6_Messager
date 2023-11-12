@@ -7,7 +7,7 @@ import json
 from django.db.models import F
 from asgiref.sync import async_to_sync
 
-from chat.models import Profile, ChatRoom
+from chat.models import Profile, ChatRoom, PersonalMessage, RoomMessage
 
 
 # class ChatConsumer(AsyncConsumer):
@@ -49,7 +49,9 @@ class ChatConsumer(SyncConsumer):
         # print(type(data))
         if 'get' in data:
             # print('get in data')
-            return 'get', data['get']
+            return 'get', data['get'], data
+        elif 'post' in data:
+            return 'post', data['post'], data
 
     @classmethod
     def get_profile_id_by_user_id(cls, user_id):
@@ -76,44 +78,125 @@ class ChatConsumer(SyncConsumer):
         # return self.encode_json(lst)
         return lst;
 
+    # def get_profiles_for_message(self):
+
+    def receive_message(self, profile_id, msg_text):
+        profile = Profile.objects.get(id=profile_id)
+        print(f"receive_message: {profile_id}, {msg_text}, profile.selected_category={profile.selected_category}")
+        if profile.selected_category == 0:
+            dest = Profile.objects.get(id=profile.selected_chat)
+            PersonalMessage.objects.create(sender=profile, text=msg_text, dest_user=dest)
+        elif profile.selected_category == 1:
+            dest = ChatRoom.objects.get(id=profile.selected_chat)
+            RoomMessage.objects.create(sender=profile, text=msg_text, dest_room=dest)
+
+    @classmethod
+    def send_personal_message(cls, channel_layer, pm):
+        sender_id = pm.sender.id
+        group_name_sender = cls.get_single_group_for_profile(sender_id)
+
+        dest_id = pm.dest_user.id
+        group_name_dest = cls.get_single_group_for_profile(dest_id)
+
+        msg_data = {
+            # "type": "websocket.send",
+            "type": "chatsignal",
+            "text": cls.encode_json({
+                "msg_type": "message_created",
+                "username": pm.sender.user.username,
+                "sender_id": pm.sender.id,
+                "text": pm.text
+            })
+        }
+
+        async_to_sync(channel_layer.group_send)(group_name_sender, msg_data)
+        async_to_sync(channel_layer.group_send)(group_name_dest, msg_data)
+
+        # async_to_sync(channel_layer.group_send)(
+        #     group_name,
+        #     {
+        #         # "type": "websocket.send",
+        #         "type": "chatsignal",
+        #         "text": cls.encode_json({
+        #           "msg_type": "message_created",
+        #           "username": pm.sender.user.username,
+        #           "sender_id": pm.sender.id,
+        #           "text": pm.text
+        #         })
+        #     }
+        # )
+
+
+    @classmethod
+    def send_room_message(cls, channel_layer, rm):
+        print(channel_layer)
+        dest_room_id = rm.dest_room.id
+        dest_user_ids = Profile.objects.filter(selected_category=1, selected_chat=dest_room_id).values_list('id', flat=True)
+
+        # print(f"send_room_message to {dest_user_ids}")
+
+        for curr_dest_user_id in dest_user_ids:
+            print(f"send_room_message to {curr_dest_user_id}")
+            curr_group_name = cls.get_single_group_for_profile(curr_dest_user_id)
+            print(f"send_room_message in {curr_group_name}")
+            # data = {
+            #     "valid": True,
+            #     "messages": []
+            # }
+
+            msg_data = {
+                  # "type": "websocket.send",
+                  "type": "chatsignal",
+                  "text": cls.encode_json({
+                      "msg_type": "message_created",
+                      "username": rm.sender.user.username,
+                      "sender_id": rm.sender.id,
+                      "text": rm.text
+                  })
+                }
+            print(msg_data)
+
+            async_to_sync(channel_layer.group_send)(curr_group_name, msg_data)
+            # async_to_sync(channel_layer.group_send)('events', msg_data)
+
+            # async_to_sync(
+            #     channel_layer.group_send(curr_group_name, msg)
+                # channel_layer.group_send('events', msg_data)
+            # )
+
+            # async_to_sync(
+            #     channel_layer.group_send(curr_group_name,
+            #         {
+            #           # "type": "websocket.send",
+            #           "type": "chatsignal",
+            #           "text": cls.encode_json({
+            #               "msg_type": "message_created",
+            #               "username": rm.sender.user.username,
+            #               "sender_id": rm.sender.id,
+            #               "text": rm.text
+            #           })
+            #         }
+            #     )
+            # )
+
+    @classmethod
+    def get_single_group_for_profile(self, profile_id):
+        return f"single_user_group_{profile_id}"
 
     def websocket_connect(self, event):
-        # self.send({"type": "websocket.accept"})
-        # self.room_group_name = 'chat'
-        print(self.channel_layer)
         async_to_sync(self.channel_layer.group_add)("events", self.channel_name)
+
         profile_id = self.scope['user'].profile.id
-        single_channel_name = f"single_user_group_{profile_id}"
-
-        print("websocket_connect")
-
-        # count = getattr(self.channel_layer, self.group_name, 0)
-        # print(count)
-
-        # print(self.channel_layer)
-
-        # async_to_sync(self.channel_layer.group_add)(
-        #     'events',
-        #     self.channel_name
-        #     # 'events'
-        # )
-
-        # self.accept()
-
-        # count = getattr(self.channel_layer, self.group_name, 0)
-        # print(count)
-
-        # self.channel_layer.group_add(
-        #     self.room_group_name,
-        #     single_channel_name
-        # )
+        single_group_name = self.get_single_group_for_profile(profile_id)
+        async_to_sync(self.channel_layer.group_add)(single_group_name, self.channel_name)
+        print(f"Group {single_group_name} created!")
 
         # await self.send({"type": "websocket.accept"})
         self.send({"type": "websocket.accept"})
 
     def websocket_receive(self, text_data):
         # print(text_data)
-        cmd_type, cmd_arg = self.get_input_data(text_data)
+        cmd_type, cmd_arg, data = self.get_input_data(text_data)
 
         user = self.scope['user']
         profile_id = self.get_profile_id_by_user_id(user.id)
@@ -123,6 +206,7 @@ class ChatConsumer(SyncConsumer):
             return
 
         if cmd_type == "get":
+            # unused now
             if cmd_arg == "user_list":
                 self.send({
                     "type": "websocket.send",
@@ -131,6 +215,7 @@ class ChatConsumer(SyncConsumer):
                         "list": self.get_user_list(profile_id)
                     })
                 })
+            # unused now
             elif cmd_arg == "room_list":
                 self.send({
                     "type": "websocket.send",
@@ -140,18 +225,30 @@ class ChatConsumer(SyncConsumer):
                         "list": self.get_room_list()
                     })
                 })
+        elif cmd_type == "post":
+            if cmd_arg == "send_message":
+                print(data)
+                self.receive_message(profile_id, data['text'])
+
 
     def websocket_disconnect(self, event):
         async_to_sync(self.channel_layer.group_discard)(
             'events',
             self.channel_name
         )
-        pass
+
+        profile_id = self.scope['user'].profile.id
+        single_group_name = self.get_single_group_for_profile(profile_id)
+        async_to_sync(self.channel_layer.group_discard)(
+            single_group_name,
+            self.channel_name
+        )
+        # pass
 
     def chatsignal(self, event):
         print("chatsignal TRIGERED")
-        print(event['text'])
-        print(event)
+        # print(event['text'])
+        # print(event)
         self.send({
             # "type": "chatsignal",
             "type": "websocket.send",

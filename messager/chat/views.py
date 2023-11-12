@@ -1,6 +1,6 @@
 from django.shortcuts import render
 from django.http import HttpResponse, JsonResponse
-from django.db.models import F
+from django.db.models import F, Q
 
 from rest_framework import viewsets
 from rest_framework import permissions
@@ -40,14 +40,56 @@ def get_chat_room_l(request):
     # print(data)
     return JsonResponse(data, safe=False)  # or JsonResponse({'data': data})
 
-def select_chat(request, sel_type, sel_id):
+
+def get_messages_for_profile(profile):
+    sel_cat = profile.selected_category
+    sel_chat = profile.selected_chat
+
+    print(f"get_messages_for_profile - start, {sel_cat}, {sel_chat}")
+
+    if sel_cat == 0:
+        # qs = PersonalMessage.objects.filter(dest_user=sel_chat)
+
+        criterion1 = Q(dest_user=sel_chat)
+        criterion2 = Q(sender__id=sel_chat)
+        qs = PersonalMessage.objects.filter(criterion1 | criterion2)
+        qs = qs.annotate(username=F('sender__user__username'))
+        values = qs.values("id", "text", "username")
+        data = list(values)
+        print("get_messages_for_profile:")
+        print(data)
+        return data
+    elif sel_cat == 1:
+        qs = RoomMessage.objects.filter(dest_room=sel_chat)
+        qs = qs.annotate(username=F('sender__user__username'))
+        values = qs.values("id", "text", "username")
+        data = list(values)
+        return data
+    else:
+        return []
+
+
+def select_chat(request, sel_cat, sel_chat):
+    # data = {
+    #     "sel_cat": sel_cat,
+    #     "sel_chat": sel_chat,
+    # }
     try:
         profile = request.user.profile
-        profile.selected_category = sel_type
-        profile.selected_chat = sel_id
-        return HttpResponse(status=200)
+        profile.selected_category = sel_cat
+        profile.selected_chat = sel_chat
+        profile.save()
+        # print(f"select_chat {sel_cat} | {sel_chat}")
+        print("before get_messages_for_profile")
+        messages = get_messages_for_profile(profile)
+        data = {
+            "valid": len(messages) > 0,
+            "messages": messages
+        }
+        print(data)
+        return JsonResponse(data, status=200)
     except:
-        return HttpResponse(status=204)
+        return JsonResponse({}, status=204)
 
     # return JsonResponse(data, safe=False)  # or JsonResponse({'data': data})
 

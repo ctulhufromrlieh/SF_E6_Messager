@@ -42,7 +42,7 @@ urlpatterns = [
     path('', RedirectView.as_view(url='chat/', permanent=False), name='index'),
     path('chat_users/get_list/', get_chat_user_l),
     path('chat_rooms/get_list/', get_chat_room_l),
-    path('chat_select/<str:sel_type>/<int:sel_id>/', select_chat)
+    path('chat_select/<int:sel_cat>/<int:sel_chat>/', select_chat)
     # path('', include(router.urls)),
     # path('api-auth/', include('rest_framework.urls', namespace='rest_framework'))
 ]

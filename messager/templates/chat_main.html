@@ -16,10 +16,13 @@
     </div>
     <div class="right-panel">
         <div class="messages-panel">
-            Сообщения
+            Сообщения:
         </div>
         <div class="editor-panel">
-            Написать сообщение
+            <label for="message-editor">Написать сообщение:</label>
+            <textarea type="text" id="message-editor" name="message-editor"></textarea>
+            <br>
+            <input type="button" id="message-editor-send" name="message-editor-send" value="Отправить" />
         </div>                    
     </div>
 {% endblock content %}

@@ -4,11 +4,11 @@ from django.db.models import TextField, DateField, CharField
 
 
 class Profile(models.Model):
-    sel_cat_types = [("NONE", "None"), ("USER", "User"), ("ROOM", "Room")]
+    # sel_cat_types = [("NONE", "None"), ("USER", "User"), ("ROOM", "Room")]
 
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     avatar_image = models.ImageField(upload_to='uploads/')
-    selected_category = models.CharField(max_length=4, choices=sel_cat_types, default="NONE")
+    selected_category = models.IntegerField(default=-1)
     selected_chat = models.IntegerField(default=-1)
 
     def __str__(self):
