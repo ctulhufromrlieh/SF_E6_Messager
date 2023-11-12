@@ -29,7 +29,14 @@ def get_chat_user_l(request):
     qs = Profile.objects.all().exclude(id=request.user.profile.id)
     # values = qs.values("id", "user__username")
     values = qs.annotate(username=F('user__username')).values("id", "username", )
-    data = list(values)
+    # data = list(values)
+    data = {
+        "list": list(values),
+        "me": {
+            "id": request.user.profile.id,
+            "username": request.user.profile.user.username
+        }
+    }
     # print(data)
     return JsonResponse(data, safe=False)  # or JsonResponse({'data': data})
 
@@ -52,7 +59,7 @@ def get_messages_for_profile(profile):
 
         criterion1 = Q(dest_user=sel_chat)
         criterion2 = Q(sender__id=sel_chat)
-        qs = PersonalMessage.objects.filter(criterion1 | criterion2)
+        qs = PersonalMessage.objects.filter(criterion1 | criterion2).order_by("creation_date")
         qs = qs.annotate(username=F('sender__user__username'))
         values = qs.values("id", "text", "username")
         data = list(values)
@@ -60,7 +67,7 @@ def get_messages_for_profile(profile):
         print(data)
         return data
     elif sel_cat == 1:
-        qs = RoomMessage.objects.filter(dest_room=sel_chat)
+        qs = RoomMessage.objects.filter(dest_room=sel_chat).order_by("creation_date")
         qs = qs.annotate(username=F('sender__user__username'))
         values = qs.values("id", "text", "username")
         data = list(values)

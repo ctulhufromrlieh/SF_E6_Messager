@@ -24,18 +24,9 @@ def save_user_profile(sender, instance, **kwargs):
     if hasattr(instance, 'profile'):
         instance.profile.save()
 
-def base_profile_changed(sender, profile, **kwargs):
-    if profile.id is None:
+def base_profile_changed(sender, profile, created, **kwargs):
+    if created or (profile.id is None):
         msg_type = "profile_created"
-        # msg_data= {
-        #     "type": "chat.message",
-        #     "text": json.dumps({
-        #         "msg_type": "profile_created",
-        #         "id": profile.id,
-        #         "username": profile.user.username,
-        #         # "avatar": profile.avatar_image
-        #     })
-        # }
     else:
         previous = Profile.objects.get(id=profile.id)
         # if (previous.avatar_image == profile.avatar_image) and (previous.user.username == profile.user.username):
@@ -55,7 +46,6 @@ def base_profile_changed(sender, profile, **kwargs):
     }
 
     channel_layer = channels.layers.get_channel_layer()
-    # print(msg_data)
     async_to_sync(channel_layer.group_send)('events', msg_data)
 
 
@@ -64,13 +54,18 @@ def user_changed(sender, instance, **kwargs):
     if instance.id is None:
         pass
     else:
-        base_profile_changed(sender, instance.profile, **kwargs)
+        base_profile_changed(sender, instance.profile, None, **kwargs)
 
 
-@receiver(pre_save, sender=Profile)
-def profile_changed(sender, instance, **kwargs):
-    base_profile_changed(sender, instance, **kwargs)
+# @receiver(pre_save, sender=Profile)
+# def pre_profile_changed(sender, instance, **kwargs):
+#     base_profile_changed(sender, instance, None, **kwargs)
 
+@receiver(post_save, sender=Profile)
+def post_profile_changed(sender, instance, created, **kwargs):
+    print("post_profile_changed")
+    print(sender, instance, created)
+    base_profile_changed(sender, instance, created, **kwargs)
 
 @receiver(post_save, sender=PersonalMessage)
 def create_user_profile(sender, instance, created, **kwargs):

@@ -3,6 +3,7 @@ const urlGetChatRoomList = 'http://127.0.0.1:8000/chat_rooms/get_list/'
 // const urlSelectChat      = 'http://127.0.0.1:8000/select_chat'
 
 let socket
+let myProfileId = -1
 let selectedDest = -1
 let selectedId = -1
 let selectedElem = null
@@ -78,7 +79,7 @@ function init_user_list(){
     return result;
   })
   .then((data) => {
-    refreshUserList(data)
+    refreshUserList(data.list, data.me)
     // changeProfile(1, '123')
   })
   .catch(() => {
@@ -134,7 +135,7 @@ function createRoomElem(id, name){
     return newElem
 }
 
-function refreshUserList(users){
+function refreshUserList(users, me){
   pnlUsers = document.getElementsByClassName('users-panel')[0]
 
   deleteElementsOfClass('user-elem')
@@ -143,6 +144,8 @@ function refreshUserList(users){
     let newElem = createUserElem(currUser.id, currUser.username)
     pnlUsers.append(newElem)
   })
+  myProfileId = me.id
+  refreshTitle(myProfileId, me.username)
 }
 
 function refreshRoomList(rooms){
@@ -169,22 +172,31 @@ function addProfile(id, username){
   
 }
 
+function refreshTitle(id, username){
+  let userElem = document.querySelector("header")
+  userElem.textContent = `Добро пожаловать, ${username}.`
+}
+
 function changeProfile(id, username){
   let elemId = `user-elem-${id}`
   console.log(elemId)
   let userElem = document.getElementById(elemId)
-  console.log(userElem)
-  console.log(document.getElementById(elemId))
-  let prevUser = userElem.previousSibling
-  userElem.remove()
-  if (prevUser){
-    prevUser.after(createUserElem(id, username))
-  } else {
-    addProfile(id, username)
+  if (userElem){
+    console.log(userElem)
+    console.log(document.getElementById(elemId))
+    let prevUser = userElem.previousSibling
+    userElem.remove()
+    if (prevUser){
+      prevUser.after(createUserElem(id, username))
+    } else {
+      addProfile(id, username)
+    }
+
+    // newElem = createUserElem(id, username)
+    // lastUser.after(newElem)
+  } else if (myProfileId == id) {
+    refreshTitle(myProfileId, username)
   }
-  
-  // newElem = createUserElem(id, username)
-  // lastUser.after(newElem)
 }
 
 function addMessage(username, text){
