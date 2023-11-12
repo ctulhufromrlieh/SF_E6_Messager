@@ -1,0 +1,25 @@
+{% extends 'flatpages/default.html' %}
+{% load static %}
+
+{% block scripts %}
+<script src="{% static 'js/main.js' %}"></script>
+{% endblock scripts %}
+
+{% block title %}
+    Чат
+{% endblock title %}
+
+{% block content %}
+    <div class="left-panel">
+        <div class="users-panel"><p class="panel-list-title">Список юзеров</p></div>
+        <div class="rooms-panel"><p class="panel-list-title"></p>Список групп</p></div>
+    </div>
+    <div class="right-panel">
+        <div class="messages-panel">
+            Сообщения
+        </div>
+        <div class="editor-panel">
+            Написать сообщение
+        </div>                    
+    </div>
+{% endblock content %}
