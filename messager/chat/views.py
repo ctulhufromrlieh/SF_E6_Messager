@@ -11,6 +11,7 @@ from .models import *
 # from .models import ChatUser
 from .models import Profile
 from .forms import UploadImageForm
+from chat.util_funcs import get_avatar_image_url, get_profile_avatar_image_urls
 
 
 def upload_image(request):
@@ -28,13 +29,30 @@ def get_chat_user_l(request):
     # qs = Profile.objects.all().exclude(id=request.user.profile.id).values("id", "user__username")
     qs = Profile.objects.all().exclude(id=request.user.profile.id)
     # values = qs.values("id", "user__username")
-    values = qs.annotate(username=F('user__username')).values("id", "username", )
+    # values = qs.annotate(username=F('user__username')).values("id", "username", )
+    qs = qs.annotate(username=F('user__username'))
+    values = qs.values("id", "username", )
+    lst = list(values)
+    for curr_user in lst:
+        curr_avatar_image = Profile.objects.get(id=curr_user["id"]).avatar_image
+        if bool(curr_avatar_image):
+            curr_user["avatar_image_url"] = curr_avatar_image.url
+        else:
+            curr_user["avatar_image_url"] = ""
+
+    print(lst)
+
     # data = list(values)
+    if bool(request.user.profile.avatar_image):
+        my_avatar_url = request.user.profile.avatar_image.url
+    else:
+        my_avatar_url = ""
     data = {
         "list": list(values),
         "me": {
             "id": request.user.profile.id,
-            "username": request.user.profile.user.username
+            "username": request.user.profile.user.username,
+            "avatar_image_url": my_avatar_url
         }
     }
     # print(data)
@@ -55,28 +73,20 @@ def get_messages_for_profile(profile):
     sel_cat = profile.selected_category
     sel_chat = profile.selected_chat
 
-    print(f"get_messages_for_profile - start, {sel_cat}, {sel_chat}")
-
     if sel_cat == 0:
         # qs = PersonalMessage.objects.filter(dest_user=sel_chat)
 
         criterion1 = Q(dest_user=sel_chat)
         criterion2 = Q(sender__id=sel_chat)
         qs = PersonalMessage.objects.filter(criterion1 | criterion2).order_by("creation_date")
-        print("get_messages_for_profile: sel_cat == 0: before annotate")
-        # qs = qs.annotate(sender_id=F("sender__id")).anotate(username=F('sender__user__username'))
         qs = qs.annotate(username=F('sender__user__username'))
-        print("get_messages_for_profile: sel_cat == 0: after annotate")
+        # print("get_messages_for_profile: sel_cat == 0: after annotate")
         values = qs.values("id", "sender_id", "text", "username")
         data = list(values)
-        # print("get_messages_for_profile:")
-        # print(data)
+
         return data
     elif sel_cat == 1:
-        print("get_messages_for_profile: sel_cat == 1")
         qs = RoomMessage.objects.filter(dest_room=sel_chat).order_by("creation_date")
-        print("get_messages_for_profile: sel_cat == 1: before annotate")
-        # qs = qs.annotate(sender_id=F("sender__id")).annotate(username=F('sender__user__username'))
         qs = qs.annotate(username=F('sender__user__username'))
 
         values = qs.values("id", "sender_id", "text", "username")
@@ -95,6 +105,16 @@ def select_chat(request, sel_cat, sel_chat):
         # print(f"select_chat {sel_cat} | {sel_chat}")
         # print("before get_messages_for_profile")
         messages = get_messages_for_profile(profile)
+        # print("messages got")
+        profile_avatar_image_urls = get_profile_avatar_image_urls()
+        # print("profile_avatar_image_urls got")
+        # print(profile_avatar_image_urls)
+        for curr_message in messages:
+            curr_message["avatar_image_url"] = profile_avatar_image_urls[curr_message["sender_id"]]
+            # print(profile_avatar_image_urls[curr_message["sender_id"]])
+
+        print("messages:")
+        print(messages)
         data = {
             "valid": len(messages) > 0,
             "messages": messages
@@ -103,6 +123,7 @@ def select_chat(request, sel_cat, sel_chat):
         return JsonResponse(data, status=200)
     except:
         return JsonResponse({}, status=204)
+
 
 def create_chat_room(request, name):
     chatroom = ChatRoom.objects.create(name=name, owner=request.user.profile)

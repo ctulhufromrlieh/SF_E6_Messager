@@ -9,6 +9,7 @@ import channels.layers
 from chat.consumers import ChatConsumer
 
 from chat.models import Profile, ChatRoom, PersonalMessage, RoomMessage
+from chat.util_funcs import get_avatar_image_url
 
 
 @receiver(post_save, sender=User)
@@ -24,13 +25,15 @@ def save_user_profile(sender, instance, **kwargs):
     if hasattr(instance, 'profile'):
         instance.profile.save()
 
+
 def base_profile_changed(sender, profile, created, **kwargs):
     if created or (profile.id is None):
         msg_type = "profile_created"
     else:
         previous = Profile.objects.get(id=profile.id)
         # if (previous.avatar_image == profile.avatar_image) and (previous.user.username == profile.user.username):
-        if (previous.user.username == profile.user.username):
+        if (previous.user.username == profile.user.username) \
+                and (get_avatar_image_url(previous.avatar_image) == get_avatar_image_url(profile.avatar_image)):
             return
         else:
             msg_type = "profile_changed"
@@ -41,6 +44,7 @@ def base_profile_changed(sender, profile, created, **kwargs):
             "msg_type": msg_type,
             "id": profile.id,
             "username": profile.user.username,
+            "avatar_image_url": get_avatar_image_url(profile.avatar_image)
             # "avatar": profile.avatar_image
         })
     }
@@ -63,8 +67,8 @@ def user_changed(sender, instance, **kwargs):
 
 @receiver(post_save, sender=Profile)
 def post_profile_changed(sender, instance, created, **kwargs):
-    print("post_profile_changed")
-    print(sender, instance, created)
+    # print("post_profile_changed")
+    # print(sender, instance, created)
     base_profile_changed(sender, instance, created, **kwargs)
 
 @receiver(post_save, sender=ChatRoom)

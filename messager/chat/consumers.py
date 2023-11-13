@@ -8,6 +8,7 @@ from django.db.models import F
 from asgiref.sync import async_to_sync
 
 from chat.models import Profile, ChatRoom, PersonalMessage, RoomMessage
+from chat.util_funcs import get_avatar_image_url
 
 
 # class ChatConsumer(AsyncConsumer):
@@ -25,9 +26,9 @@ from chat.models import Profile, ChatRoom, PersonalMessage, RoomMessage
 #         pass
 
 class ChatConsumer(SyncConsumer):
-# class ChatConsumer(JsonWebsocketConsumer):
-# class ChatComusmer(WebsocketConsumer):
-#     channel_layer_alias = 'events'
+    # class ChatConsumer(JsonWebsocketConsumer):
+    # class ChatComusmer(WebsocketConsumer):
+    #     channel_layer_alias = 'events'
 
     @classmethod
     def decode_json(cls, text_data):
@@ -57,32 +58,24 @@ class ChatConsumer(SyncConsumer):
     def get_profile_id_by_user_id(cls, user_id):
         return Profile.objects.get(user__id=user_id).id
 
+    # unused
     def get_user_list(self, my_profile_id):
         qs = Profile.objects.all()
-        # print(list(qs))
         qs = qs.exclude(id=my_profile_id)
-        # print(list(qs))
-        # qs = Profile.objects.all().exclude(id=my_id)
         values = qs.annotate(username=F('user__username')).values("id", "username", )
-        # values = qs.values("id", "user__username", )
         lst = list(values)
-        # print(lst)
-        # return self.encode_json(lst)
         return lst;
 
+    # unused
     def get_room_list(self):
         qs = ChatRoom.objects.all()
         values = qs.values("id", "name", )
         lst = list(values)
-        # print(lst)
-        # return self.encode_json(lst)
         return lst;
-
-    # def get_profiles_for_message(self):
 
     def receive_message(self, profile_id, msg_text):
         profile = Profile.objects.get(id=profile_id)
-        print(f"receive_message: {profile_id}, {msg_text}, profile.selected_category={profile.selected_category}")
+        # print(f"receive_message: {profile_id}, {msg_text}, profile.selected_category={profile.selected_category}")
         if profile.selected_category == 0:
             dest = Profile.objects.get(id=profile.selected_chat)
             PersonalMessage.objects.create(sender=profile, text=msg_text, dest_user=dest)
@@ -147,6 +140,7 @@ class ChatConsumer(SyncConsumer):
                 "msg_type": "message_created",
                 "username": pm.sender.user.username,
                 "sender_id": pm.sender.id,
+                "avatar_image_url": get_avatar_image_url(pm.sender.avatar_image),
                 "text": pm.text
             })
         }
@@ -158,29 +152,25 @@ class ChatConsumer(SyncConsumer):
     def send_room_message(cls, channel_layer, rm):
         print(channel_layer)
         dest_room_id = rm.dest_room.id
-        dest_user_ids = Profile.objects.filter(selected_category=1, selected_chat=dest_room_id).values_list('id', flat=True)
-
-        # print(f"send_room_message to {dest_user_ids}")
+        dest_user_ids = Profile.objects.filter(selected_category=1, selected_chat=dest_room_id).values_list('id',
+                                                                                                            flat=True)
 
         for curr_dest_user_id in dest_user_ids:
             print(f"send_room_message to {curr_dest_user_id}")
             curr_group_name = cls.get_single_group_for_profile(curr_dest_user_id)
             print(f"send_room_message in {curr_group_name}")
-            # data = {
-            #     "valid": True,
-            #     "messages": []
-            # }
 
             msg_data = {
-                  # "type": "websocket.send",
-                  "type": "chatsignal",
-                  "text": cls.encode_json({
-                      "msg_type": "message_created",
-                      "username": rm.sender.user.username,
-                      "sender_id": rm.sender.id,
-                      "text": rm.text
-                  })
-                }
+                # "type": "websocket.send",
+                "type": "chatsignal",
+                "text": cls.encode_json({
+                    "msg_type": "message_created",
+                    "username": rm.sender.user.username,
+                    "sender_id": rm.sender.id,
+                    "avatar_image_url": get_avatar_image_url(rm.sender.avatar_image),
+                    "text": rm.text
+                })
+            }
             print(msg_data)
 
             async_to_sync(channel_layer.group_send)(curr_group_name, msg_data)
@@ -235,7 +225,6 @@ class ChatConsumer(SyncConsumer):
             if cmd_arg == "send_message":
                 print(data)
                 self.receive_message(profile_id, data['text'])
-
 
     def websocket_disconnect(self, event):
         async_to_sync(self.channel_layer.group_discard)(

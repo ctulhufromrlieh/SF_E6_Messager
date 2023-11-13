@@ -29,7 +29,7 @@ function select(dest, id, elem){
 
     deleteElementsOfClass("message-elem")
     for (currMessage of data.messages){
-      addMessage(currMessage.sender_id, currMessage.username, currMessage.text)
+      addMessage(currMessage.sender_id, currMessage.username, currMessage.avatar_image_url, currMessage.text)
     }
 
     deselectElem(selectedElem)
@@ -67,7 +67,6 @@ function init_user_list(){
   .then((data) => {
     refreshUserList(data.list, data.me)
     init_room_list()
-    // changeProfile(1, '123')
   })
   .catch(() => {
     console.log('init_user_list error') 
@@ -86,6 +85,14 @@ function init_room_list(){
   .catch(() => {
     console.log('init_room_list error') 
   });
+}
+
+function getUserAvatarImageHTML(avatar_image_url){
+  if (avatar_image_url == ""){
+    return "&nbsp;"
+  }else{
+    return `<img src="${avatar_image_url}" />`
+  }
 }
 
 function messageCreateChatRoom(name){  
@@ -149,10 +156,14 @@ function deleteElementsOfClass(className){
   // }
 }
 
-function createUserElem(id, username){
+function createUserElem(id, username, avatar_image_url){
   let newElem = document.createElement("div");
   newElem.className = 'user-elem'
-  newElem.innerHTML = `<span class="username-elem-${id}">${username}</span> (id = ${id})`
+  let avatarHTML = `<div class="avatar-elem avatar-elem-${id}">${getUserAvatarImageHTML(avatar_image_url)}</div>`
+  let usernameHTML = `<span class="username-elem-${id}">${username}</span>`
+  // let newHTML =  avatarHTML + usernameHTML + `(id = ${id}, avatar_image_url=${avatar_image_url})`
+  let newHTML =  avatarHTML + usernameHTML + `(id = ${id})`
+  newElem.innerHTML = newHTML
   // newElem.textContent = `(id = ${id})`
   newElem.id = `user-elem-${id}`
   newElem.addEventListener('click', (event) => {
@@ -205,7 +216,7 @@ function refreshUserList(users, me){
   deleteElementsOfClass('user-elem')
 
   users.forEach((currUser) => {
-    let newElem = createUserElem(currUser.id, currUser.username)
+    let newElem = createUserElem(currUser.id, currUser.username, currUser.avatar_image_url)
     pnlUsers.append(newElem)
   })
   myProfileId = me.id
@@ -223,9 +234,9 @@ function refreshRoomList(rooms){
   })
 }
 
-function addProfile(id, username){
+function addProfile(id, username, avatar_image_url){
   const pnlUsers = document.getElementsByClassName('users-panel')[0] 
-  newElem = createUserElem(id, username)
+  newElem = createUserElem(id, username, avatar_image_url)
 
   if (pnlUsers.children.length > 0) {
     const lastUser = pnlUsers.children[pnlUsers.children.length - 1]
@@ -241,14 +252,19 @@ function refreshTitle(id, username){
   userElem.textContent = `${username}.`
 }
 
-function changeProfile(id, username){
-  let elems = document.getElementsByClassName(`username-elem-${id}`)
-  for (let currElem of elems){
-    currElem.textContent = username
+function changeProfile(id, username, avatar_image_url){
+  let nameElems = document.getElementsByClassName(`username-elem-${id}`)
+  for (let currNameElem of nameElems){
+    currNameElem.textContent = username
+  }
+
+  let avatarElems = document.getElementsByClassName(`avatar-elem-${id}`)
+  for (let currAvatarElem of avatarElems){
+    currAvatarElem.innerHTML = getUserAvatarImageHTML(avatar_image_url)
   }
 
   if (myProfileId == id) {
-    refreshTitle(myProfileId, username)
+    refreshTitle(myProfileId, username, avatar_image_url)
   }
 }
 
@@ -272,25 +288,6 @@ function changeChatRoom(id, name, owner_id){
   }  
 }
 
-  // let chatRoomElem = document.getElementById(`room-elem-${id}`)
-  // if (chatRoomElem){
-  //   let pnlRoomElems = chatRoomElem.parentElement
-  //   let nextRoomElem = chatRoomElem.nextSibling
-  //   chatRoomElem.remove()
-  //   let newElem = createChatRoom(id, name, owner_id)
-  //   if (nextRoomElem){
-  //     nextRoomElem.before(newElem)
-  //   }else{
-  //     pnlRoomElems.append(newElem)  
-  //   }
-
-  // }
-  // if (chatRoomElem){
-  //   chatRoomElem.innerHTML = getInnerHTMLForRoomElem(id, name, owner_id)
-  //   // chatRoomElem.textContent = `${name} (id = ${id})`
-  // }
-// }
-
 function deleteChatRoom(id, name, owner_id){
   if ((selectedDest == 0) & (selectedElem == id)){
     select(-1, -1, null)
@@ -301,12 +298,16 @@ function deleteChatRoom(id, name, owner_id){
   }
 }
 
-function addMessage(sender_id, username, text){
+function addMessage(sender_id, username, avatar_image_url, text){
   let pnlMessages = document.getElementsByClassName('messages-panel')[0]
   let newElem = document.createElement("div");
   // newElem.className = 'message-elem'
   // newElem.innerHTML = `<b><span class="username-elem-${id}">${username}</span></b>: ${text}`
-  newElem.innerHTML = `<span class="message-elem username-elem username-elem-${sender_id}">${username}</span><span>: ${text}</span>`
+  let avatarHTML = `<div class="avatar-elem avatar-elem-${sender_id}">${getUserAvatarImageHTML(avatar_image_url)}</div>`
+  let usernameHTML = `<span class="username-elem-${sender_id}">${username}</span>`
+  newElem.innerHTML = avatarHTML + usernameHTML + `<span>: ${text}</span>`
+  // newElem.innerHTML = `<div class="avatar-elem avatar-elem-${sender_id}">${getUserAvatarImageHTML(avatar_image_url)}</div> \
+    // <span class="username-elem username-elem-${sender_id}">${username}</span><span>: ${text}</span>`
   newElem.className = 'message-elem'
   pnlMessages.append(newElem)
 }
@@ -319,11 +320,11 @@ function message_handler(data_text){
   } else if (data.msg_type == 'room_list'){
     // refreshRoomList(data.list)
   } else if (data.msg_type == 'profile_created'){
-    addProfile(data.id, data.username)
+    addProfile(data.id, data.username, data.avatar_image_url)
   } else if (data.msg_type == 'profile_changed'){
-    changeProfile(data.id, data.username)
+    changeProfile(data.id, data.username, data.avatar_image_url)
   } else if (data.msg_type == 'message_created'){
-    addMessage(data.sender_id, data.username, data.text)
+    addMessage(data.sender_id, data.username, data.avatar_image_url, data.text)
   } else if (data.msg_type == "chatroom_created") {
     createChatRoom(data.id, data.name, data.owner_id)
   } else if (data.msg_type == "chatroom_changed") {

@@ -11,6 +11,10 @@ class Profile(models.Model):
     selected_category = models.IntegerField(default=-1)
     selected_chat = models.IntegerField(default=-1)
 
+    @property
+    def has_avatar(self):
+        return bool(self.avatar_image)
+
     def __str__(self):
         return f"{self.pk}: {self.user.username}"
 
