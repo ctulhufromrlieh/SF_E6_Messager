@@ -55,7 +55,7 @@ def get_messages_for_profile(profile):
     sel_cat = profile.selected_category
     sel_chat = profile.selected_chat
 
-    # print(f"get_messages_for_profile - start, {sel_cat}, {sel_chat}")
+    print(f"get_messages_for_profile - start, {sel_cat}, {sel_chat}")
 
     if sel_cat == 0:
         # qs = PersonalMessage.objects.filter(dest_user=sel_chat)
@@ -63,16 +63,23 @@ def get_messages_for_profile(profile):
         criterion1 = Q(dest_user=sel_chat)
         criterion2 = Q(sender__id=sel_chat)
         qs = PersonalMessage.objects.filter(criterion1 | criterion2).order_by("creation_date")
+        print("get_messages_for_profile: sel_cat == 0: before annotate")
+        # qs = qs.annotate(sender_id=F("sender__id")).anotate(username=F('sender__user__username'))
         qs = qs.annotate(username=F('sender__user__username'))
-        values = qs.values("id", "text", "username")
+        print("get_messages_for_profile: sel_cat == 0: after annotate")
+        values = qs.values("id", "sender_id", "text", "username")
         data = list(values)
         # print("get_messages_for_profile:")
         # print(data)
         return data
     elif sel_cat == 1:
+        print("get_messages_for_profile: sel_cat == 1")
         qs = RoomMessage.objects.filter(dest_room=sel_chat).order_by("creation_date")
+        print("get_messages_for_profile: sel_cat == 1: before annotate")
+        # qs = qs.annotate(sender_id=F("sender__id")).annotate(username=F('sender__user__username'))
         qs = qs.annotate(username=F('sender__user__username'))
-        values = qs.values("id", "text", "username")
+
+        values = qs.values("id", "sender_id", "text", "username")
         data = list(values)
         return data
     else:
@@ -98,7 +105,7 @@ def select_chat(request, sel_cat, sel_chat):
         return JsonResponse({}, status=204)
 
 def create_chat_room(request, name):
-    chatroom = ChatRoom.objects.create(name, owner=request.user.profile)
+    chatroom = ChatRoom.objects.create(name=name, owner=request.user.profile)
     data = {
         "id": chatroom.id,
         "name": chatroom.name,

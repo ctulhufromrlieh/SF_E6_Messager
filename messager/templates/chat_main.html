@@ -11,8 +11,17 @@
 
 {% block content %}
     <div class="left-panel">
-        <div class="users-panel"><p class="panel-list-title">Список юзеров</p></div>
-        <div class="rooms-panel"><p class="panel-list-title"></p>Список групп</p></div>
+        <div class="users-panel">
+            <p class="panel-list-title">Список юзеров</p>
+        </div>
+        <div class="rooms-panel">
+            <p class="panel-list-title"></p>Список групп</p>
+            <div id="room-elem-add">
+                <p>Добавить новую группу</p>
+                <input type="text" id="room-elem-add-edt" value="Новая группа" />
+                <input type="button" id="room-elem-add-btn" value="Добавить" />
+            </div>
+        </div>
     </div>
     <div class="right-panel">
         <div class="messages-panel">

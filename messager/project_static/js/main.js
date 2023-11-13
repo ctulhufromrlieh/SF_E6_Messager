@@ -1,6 +1,5 @@
 const urlGetChatUserList = 'http://127.0.0.1:8000/chat_users/get_list/'
 const urlGetChatRoomList = 'http://127.0.0.1:8000/chat_rooms/get_list/'
-// const urlSelectChat      = 'http://127.0.0.1:8000/select_chat'
 
 let socket
 let myProfileId = -1
@@ -17,19 +16,6 @@ function deselectElem(elem){
 }
 
 function select(dest, id, elem){
-  // deselectElem(selectedElem)
-  // if (dest == 0){
-  //   elem.classList.add('selected-elem')
-  // } else if (dest == 1){
-  //     elem.classList.add('selected-elem')
-  // }
-  // else{
-  //   selectedDest = dest
-  //   selectedId = id
-  //   selectedElem = elem
-  //   return
-  // }
-
   let url = `http://127.0.0.1:8000/chat_select/${dest}/${id}/`
 
   fetch(url)
@@ -43,14 +29,18 @@ function select(dest, id, elem){
 
     deleteElementsOfClass("message-elem")
     for (currMessage of data.messages){
-      addMessage(currMessage.username, currMessage.text)
+      addMessage(currMessage.sender_id, currMessage.username, currMessage.text)
     }
 
     deselectElem(selectedElem)
     if (dest == 0){
+      if (elem){
       elem.classList.add('selected-elem')
+      }
     } else if (dest == 1){
+        if (elem){
         elem.classList.add('selected-elem')
+      }
     }
     else{
       selectedDest = dest
@@ -66,10 +56,6 @@ function select(dest, id, elem){
   .catch(() => {
     console.log('select error') 
   });
-
-  // selectedDest = dest
-  // selectedId = id
-  // selectedElem = elem
 }
 
 function init_user_list(){
@@ -103,8 +89,9 @@ function init_room_list(){
 }
 
 function messageCreateChatRoom(name){  
-  let url = `http://127.0.0.1:8000/chat_rooms/create/${name}/`
-
+  // let url = `http://127.0.0.1:8000/chat_rooms/create/${name}/`
+  let url = encodeURI(`http://127.0.0.1:8000/chat_rooms/create/${name}/`)
+  
   fetch(url)
   .then((response) => {
     const result = response.json();
@@ -119,7 +106,8 @@ function messageCreateChatRoom(name){
 }
 
 function messageChangeChatRoom(id, name){  
-  let url = `http://127.0.0.1:8000/chat_rooms/change/${id}/${name}/`
+  // let url = `http://127.0.0.1:8000/chat_rooms/change/${id}/${name}/`
+  let url = encodeURI(`http://127.0.0.1:8000/chat_rooms/change/${id}/${name}/`)
 
   fetch(url)
   .then((response) => {
@@ -164,7 +152,8 @@ function deleteElementsOfClass(className){
 function createUserElem(id, username){
   let newElem = document.createElement("div");
   newElem.className = 'user-elem'
-  newElem.textContent = `${username} (id = ${id})`
+  newElem.innerHTML = `<span class="username-elem-${id}">${username}</span> (id = ${id})`
+  // newElem.textContent = `(id = ${id})`
   newElem.id = `user-elem-${id}`
   newElem.addEventListener('click', (event) => {
     select(0, id, newElem)
@@ -177,7 +166,7 @@ function getInnerHTMLForRoomElem(id, name, owner_id){
   if (owner_id == myProfileId){
       return `<input type="text" id="room-elem-name-${id}" value="${name}" /><input type="button" id="room-elem-change-${id}" value="Изменить"/><input type="button" id="room-elem-delete-${id}" value="Удалить" />`
   }else{
-    return `${name} (id = ${id})`
+    return `<span class="room-elem-name-${id}">${name} (id = ${id})`
   }
 }
 
@@ -195,18 +184,12 @@ function createRoomElem(id, name, owner_id){
     console.log(newElem.children)
 
     if (owner_id == myProfileId){
-      // let btnChange = document.getElementById(`room-elem-change-${id}`)
-      // let btnChange = newElem.getElementById(`room-elem-change-${id}`)
       let btnChange = newElem.children[1]
       btnChange.addEventListener('click', (event) => {
-        // let edtName = document.getElementById(`room-elem-name-${id}`)
-        // let edtName = newElem.getElementById(`room-elem-name-${id}`)
         let edtName = newElem.children[0]
         messageChangeChatRoom(id, edtName.value)
       })
 
-      // let btnDelete = document.getElementById(`room-elem-delete-${id}`)
-      // let btnDelete = newElem.getElementById(`room-elem-delete-${id}`)
       let btnDelete = newElem.children[2]
       btnDelete.addEventListener('click', (event) => {
         messageDeleteChatRoom(id)
@@ -230,16 +213,14 @@ function refreshUserList(users, me){
 }
 
 function refreshRoomList(rooms){
-  pnlRooms = document.getElementsByClassName('rooms-panel')[0]
+  let pnlRoomElemAdd = document.getElementById('room-elem-add')
   
   deleteElementsOfClass('room-elem')
 
   rooms.forEach((currRoom) => {
     let newElem = createRoomElem(currRoom.id, currRoom.name, currRoom.owner_id)
-    pnlRooms.append(newElem)
+    pnlRoomElemAdd.before(newElem)
   })
-
-
 }
 
 function addProfile(id, username){
@@ -256,76 +237,78 @@ function addProfile(id, username){
 }
 
 function refreshTitle(id, username){
-  let userElem = document.querySelector("header")
-  userElem.textContent = `Добро пожаловать, ${username}.`
+  let userElem = document.querySelector("#username-my")
+  userElem.textContent = `${username}.`
 }
 
 function changeProfile(id, username){
-  let elemId = `user-elem-${id}`
-  console.log(elemId)
-  let userElem = document.getElementById(elemId)
-  if (userElem){
-    console.log(userElem)
-    console.log(document.getElementById(elemId))
-    let prevUser = userElem.previousSibling
-    userElem.remove()
-    if (prevUser){
-      prevUser.after(createUserElem(id, username))
-    } else {
-      addProfile(id, username)
-    }
+  let elems = document.getElementsByClassName(`username-elem-${id}`)
+  for (let currElem of elems){
+    currElem.textContent = username
+  }
 
-    // newElem = createUserElem(id, username)
-    // lastUser.after(newElem)
-  } else if (myProfileId == id) {
+  if (myProfileId == id) {
     refreshTitle(myProfileId, username)
   }
 }
 
 function createChatRoom(id, name, owner_id){
-  let pnlRooms = document.getElementsByClassName('rooms-panel')[0]  
+  let pnlRoomElemAdd = document.getElementById('room-elem-add')
+  // let pnlRooms = document.getElementsByClassName('rooms-panel')[0]  
   let newElem = createRoomElem(id, name, owner_id)
-  pnlRooms.append(newElem)
+  // pnlRooms.append(newElem)
+  pnlRoomElemAdd.before(newElem)
 }
 
 function changeChatRoom(id, name, owner_id){
-  let chatRoomElem = document.getElementById(`room-elem-${id}`)
-  if (chatRoomElem){
-    let pnlRoomElems = chatRoomElem.parentElement
-    let nextRoomElem = chatRoomElem.nextSibling
-    chatRoomElem.remove()
-    let newElem = createChatRoom(id, name, owner_id)
-    if (nextRoomElem){
-      nextRoomElem.before(newElem)
-    }else{
-      pnlRoomElems.append(newElem)  
-    }
+  let chatRoomSpans = document.querySelectorAll(`span.room-elem-name-${id}`)
+  let chatRoomInputs = document.querySelectorAll(`span.room-elem-name-${id}`)
 
+  for (let currChatRoomSpan of chatRoomSpans){
+    currChatRoomSpan.textContent = name
   }
+  for (let currChatRoomInput of chatRoomInputs){
+    currChatRoomInput.value = name
+  }  
+}
+
+  // let chatRoomElem = document.getElementById(`room-elem-${id}`)
+  // if (chatRoomElem){
+  //   let pnlRoomElems = chatRoomElem.parentElement
+  //   let nextRoomElem = chatRoomElem.nextSibling
+  //   chatRoomElem.remove()
+  //   let newElem = createChatRoom(id, name, owner_id)
+  //   if (nextRoomElem){
+  //     nextRoomElem.before(newElem)
+  //   }else{
+  //     pnlRoomElems.append(newElem)  
+  //   }
+
+  // }
   // if (chatRoomElem){
   //   chatRoomElem.innerHTML = getInnerHTMLForRoomElem(id, name, owner_id)
   //   // chatRoomElem.textContent = `${name} (id = ${id})`
   // }
-}
+// }
 
 function deleteChatRoom(id, name, owner_id){
+  if ((selectedDest == 0) & (selectedElem == id)){
+    select(-1, -1, null)
+  }
   let chatRoomElem = document.getElementById(`room-elem-${id}`)
   if (chatRoomElem){
     chatRoomElem.remove()
-  }  
+  }
 }
 
-function addMessage(username, text){
+function addMessage(sender_id, username, text){
   let pnlMessages = document.getElementsByClassName('messages-panel')[0]
   let newElem = document.createElement("div");
+  // newElem.className = 'message-elem'
+  // newElem.innerHTML = `<b><span class="username-elem-${id}">${username}</span></b>: ${text}`
+  newElem.innerHTML = `<span class="message-elem username-elem username-elem-${sender_id}">${username}</span><span>: ${text}</span>`
   newElem.className = 'message-elem'
-  newElem.innerHTML = `<b>${username}</b>: ${text}`
   pnlMessages.append(newElem)
-  // newElem.id = `user-elem-${id}`
-  // newElem.addEventListener('click', (event) => {
-    // select(0, id, newElem)
-  // })
-
 }
 
 function message_handler(data_text){
@@ -340,7 +323,7 @@ function message_handler(data_text){
   } else if (data.msg_type == 'profile_changed'){
     changeProfile(data.id, data.username)
   } else if (data.msg_type == 'message_created'){
-    addMessage(data.username, data.text)
+    addMessage(data.sender_id, data.username, data.text)
   } else if (data.msg_type == "chatroom_created") {
     createChatRoom(data.id, data.name, data.owner_id)
   } else if (data.msg_type == "chatroom_changed") {
@@ -354,15 +337,21 @@ function message_handler(data_text){
 }
 
 function initialize(){
-  btnSend = document.getElementById('message-editor-send')
+  let btnSend = document.getElementById('message-editor-send')
   btnSend.addEventListener('click', (event) => {
     let editor = document.getElementById('message-editor')
     socket.send(JSON.stringify({
        post: 'send_message',
        text: editor.value
-     }));    
+     }));
 
-     editor.value = ''
+    editor.value = ''
+  })
+
+  let btnAdd = document.getElementById('room-elem-add-btn')
+  let edtAdd = document.getElementById('room-elem-add-edt')
+  btnAdd.addEventListener('click', (event) => {
+    messageCreateChatRoom(edtAdd.value)
   })
 
   socket = new WebSocket('ws://127.0.0.1:8000/ws');
