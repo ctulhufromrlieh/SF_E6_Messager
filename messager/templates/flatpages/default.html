@@ -1,0 +1,42 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+        <meta name="description" content="" />
+        <meta name="author" content="" />
+        <title>{% block title %} {% endblock title %}</title>
+        <link href="{% static 'css/styles.css' %}" rel="stylesheet" />
+        {% block scripts %}
+        {% endblock scripts %}
+    </head>
+    <body>
+        <div class="container">
+            <header>
+                {% if user.is_authenticated %}
+                    Добро пожаловать, <span id="username-my">{{ user.get_username }}</span> (<a href="{% url 'account_logout' %}">выйти</a>)
+                    <div id="avatar-my">
+                        {% if user.profile.has_avatar %}
+                        <img src="{{ user.profile.avatar_image.url }}" />
+                        {% else %}
+                        {% endif %}
+                    </div>.
+                {% else %}
+                    Добро пожаловать, странник.
+                        <a href="{% url 'account_login' %}">Авторизоваться</a>
+                        или
+                        <a href="{% url 'account_signup' %}">Зарегистрироваться</a>
+                {% endif %}
+            </header>
+            <div class="content">
+               {% block content %}
+               {{ flatpage.content }}
+               {% endblock content %}
+            </div>
+            <footer>
+                <p>©НИИ Python'оведения и несмешных шуток, 2023</p>
+            </footer>
+        </div>
+    </body>
+</html>

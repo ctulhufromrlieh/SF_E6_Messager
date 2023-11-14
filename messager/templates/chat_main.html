@@ -1,0 +1,46 @@
+{% extends 'flatpages/default.html' %}
+{% load static %}
+
+{% block scripts %}
+<script src="{% static 'js/main.js' %}"></script>
+{% endblock scripts %}
+
+{% block title %}
+    Чат
+{% endblock title %}
+
+{% block content %}
+    <div class="left-panel">
+        <div class="users-panel">
+            <p class="panel-list-title">Список юзеров</p>
+        </div>
+        <div class="rooms-panel">
+            <p class="panel-list-title"></p>Список групп</p>
+            <div id="room-elem-add">
+                <p>Добавить новую группу</p>
+                <input type="text" id="room-elem-add-edt" value="Новая группа" />
+                <input type="button" id="room-elem-add-btn" value="Добавить" />
+            </div>
+        </div>
+    </div>
+    <div class="right-panel">
+        <div class="messages-panel">
+            Сообщения:
+        </div>
+        <div class="editor-panel">
+            <label for="message-editor">Написать сообщение:</label>
+            <textarea type="text" id="message-editor" name="message-editor"></textarea>
+            <br>
+            <input type="button" id="message-editor-send" name="message-editor-send" value="Отправить" />
+        </div>                    
+    </div>
+    <div id="pnl-user-data">
+<!--        <form method="post" id="frm-user-data">-->
+            <label for="user-data-name">Имя пользователя:</label>
+            <input type="text" id="user-data-name" name="user-data-name" />
+            <label for="user-data-avatar">Аватар пользователя:</label>
+            <input type="file" id="user-data-avatar" name="user-data-avatar" accept="image/png, image/jpeg, image/gif" />
+            <input type="button" value="Изменить" id="user-data-send" name="user-data-send" onclick="uploadUserForm()" />
+<!--        </form>-->
+    </div>
+{% endblock content %}
