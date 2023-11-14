@@ -1,6 +1,7 @@
 from django.shortcuts import render
 from django.http import HttpResponse, JsonResponse
 from django.db.models import F, Q
+from django.views.decorators.csrf import csrf_exempt
 
 from rest_framework import viewsets
 from rest_framework import permissions
@@ -120,6 +121,48 @@ def select_chat(request, sel_cat, sel_chat):
             "messages": messages
         }
         # print(data)
+        return JsonResponse(data, status=200)
+    except:
+        return JsonResponse({}, status=204)
+
+
+@csrf_exempt
+def set_user_data(request):
+    try:
+        print("set_user_data start")
+        profile = request.user.profile
+
+        # for key, value in request.POST.items():
+        #     print(f'Key, value: {key}, {value}')
+            # profile.user.username = request.POST[]
+        # print(request.POST)
+
+        print("set_user_data before username")
+        new_username = request.POST['username']
+        if new_username:
+            profile.user.username = new_username
+            profile.user.save()
+
+        print("set_user_data before avatar_image")
+        # avatar_image = request.FILES['avatar_image']
+        avatar_image = request.FILES.get('avatar_image', None)
+        print("set_user_data before avatar_image set")
+        if avatar_image:
+            profile.avatar_image = avatar_image
+        else:
+            profile.avatar_image = None
+
+        print("set_user_data save")
+        # profile.user.save()
+        profile.save()
+
+        data = {
+            "username": profile.user.username,
+            "avatar_image_url": get_avatar_image_url(profile.avatar_image)
+        }
+
+        print(get_avatar_image_url(profile.avatar_image))
+
         return JsonResponse(data, status=200)
     except:
         return JsonResponse({}, status=204)

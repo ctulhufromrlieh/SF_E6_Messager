@@ -1,5 +1,6 @@
 const urlGetChatUserList = 'http://127.0.0.1:8000/chat_users/get_list/'
 const urlGetChatRoomList = 'http://127.0.0.1:8000/chat_rooms/get_list/'
+const urlSetUserData = 'http://127.0.0.1:8000/chat/set_user_data/'
 
 let socket
 let myProfileId = -1
@@ -220,7 +221,7 @@ function refreshUserList(users, me){
     pnlUsers.append(newElem)
   })
   myProfileId = me.id
-  refreshTitle(myProfileId, me.username)
+  refreshTitle(myProfileId, me.username, me.avatar_image_url)
 }
 
 function refreshRoomList(rooms){
@@ -247,9 +248,12 @@ function addProfile(id, username, avatar_image_url){
   
 }
 
-function refreshTitle(id, username){
+function refreshTitle(id, username, avatar_image_url){
   let userElem = document.querySelector("#username-my")
   userElem.textContent = `${username}.`
+
+  let avatarElem = document.querySelector("#avatar-my")
+  avatarElem.innerHTML = getUserAvatarImageHTML(avatar_image_url)
 }
 
 function changeProfile(id, username, avatar_image_url){
@@ -335,6 +339,35 @@ function message_handler(data_text){
     // console.log(data_text)
   }
 
+}
+
+async function uploadUserForm(){
+  let nameElem = document.getElementById('user-data-name')
+  let avatarElem = document.getElementById('user-data-avatar')
+
+  let formData = new FormData();           
+  formData.append("username", nameElem.value);
+  formData.append("avatar_image", avatarElem.files[0]);
+
+  await fetch(urlSetUserData, {
+    method: 'POST',
+    body: formData
+  })
+  .then((response) => {
+    const result = response.json();
+    return result;
+  })
+  .then((data) => {
+    console.log(data) 
+  })
+  .catch(() => {
+    console.log('uploadUserForm error') 
+  });
+
+  // await fetch('/upload.php', {
+  //   method: "POST", 
+  //   body: formData
+  // });  
 }
 
 function initialize(){

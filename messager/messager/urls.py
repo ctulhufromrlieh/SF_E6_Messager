@@ -45,7 +45,8 @@ urlpatterns = [
     path('chat_rooms/create/<str:name>/', create_chat_room),
     path('chat_rooms/change/<int:id>/<str:name>/', change_chat_room),
     path('chat_rooms/delete/<int:id>/', delete_chat_room),
-    path('chat_select/<int:sel_cat>/<int:sel_chat>/', select_chat)
+    path('chat_select/<int:sel_cat>/<int:sel_chat>/', select_chat),
+    path('chat/set_user_data/', set_user_data),
     # path('', include(router.urls)),
     # path('api-auth/', include('rest_framework.urls', namespace='rest_framework'))
 ]

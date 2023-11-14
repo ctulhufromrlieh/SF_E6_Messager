@@ -192,3 +192,15 @@ header{
     display: flex;
     flex-direction: row;
 }
+
+#user-data-form{
+    visibility: visible;
+    display: block;
+    top: 40px;
+    right: 0px;
+    width: 400px;
+    height: 200px;
+    /* margin: 20%; */
+    z-index: 99;
+    border: solid purple 3px;
+}

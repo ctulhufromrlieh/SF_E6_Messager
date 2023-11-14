@@ -146,7 +146,11 @@ class ChatConsumer(SyncConsumer):
         }
 
         async_to_sync(channel_layer.group_send)(group_name_sender, msg_data)
-        async_to_sync(channel_layer.group_send)(group_name_dest, msg_data)
+
+        dest_profile = Profile.objects.get(id=dest_id)
+        print(f"profile {dest_id} used selected_chat={dest_profile.selected_chat}")
+        if (dest_profile.selected_category == 0) and (dest_profile.selected_chat == sender_id):
+            async_to_sync(channel_layer.group_send)(group_name_dest, msg_data)
 
     @classmethod
     def send_room_message(cls, channel_layer, rm):
@@ -156,9 +160,7 @@ class ChatConsumer(SyncConsumer):
                                                                                                             flat=True)
 
         for curr_dest_user_id in dest_user_ids:
-            print(f"send_room_message to {curr_dest_user_id}")
             curr_group_name = cls.get_single_group_for_profile(curr_dest_user_id)
-            print(f"send_room_message in {curr_group_name}")
 
             msg_data = {
                 # "type": "websocket.send",
@@ -171,9 +173,34 @@ class ChatConsumer(SyncConsumer):
                     "text": rm.text
                 })
             }
-            print(msg_data)
 
             async_to_sync(channel_layer.group_send)(curr_group_name, msg_data)
+
+    @classmethod
+    def base_profile_changed(cls, channel_layer, sender, profile, created, **kwargs):
+        if created or (profile.id is None):
+            msg_type = "profile_created"
+        else:
+            # previous = Profile.objects.get(id=profile.id)
+            # if (previous.avatar_image == profile.avatar_image) and (previous.user.username == profile.user.username):
+            # if (previous.user.username == profile.user.username) \
+            #         and (get_avatar_image_url(previous.avatar_image) == get_avatar_image_url(profile.avatar_image)):
+            #     return
+            # else:
+            msg_type = "profile_changed"
+
+        msg_data = {
+            "type": "chatsignal",
+            "text": json.dumps({
+                "msg_type": msg_type,
+                "id": profile.id,
+                "username": profile.user.username,
+                "avatar_image_url": get_avatar_image_url(profile.avatar_image)
+                # "avatar": profile.avatar_image
+            })
+        }
+
+        async_to_sync(channel_layer.group_send)('events', msg_data)
 
     @classmethod
     def get_single_group_for_profile(self, profile_id):
@@ -185,7 +212,6 @@ class ChatConsumer(SyncConsumer):
         profile_id = self.scope['user'].profile.id
         single_group_name = self.get_single_group_for_profile(profile_id)
         async_to_sync(self.channel_layer.group_add)(single_group_name, self.channel_name)
-        print(f"Group {single_group_name} created!")
 
         # await self.send({"type": "websocket.accept"})
         self.send({"type": "websocket.accept"})
@@ -196,8 +222,6 @@ class ChatConsumer(SyncConsumer):
 
         user = self.scope['user']
         profile_id = self.get_profile_id_by_user_id(user.id)
-        print(f"user.id = {user.id}")
-        print(f"profile.id = {self.get_profile_id_by_user_id(user.id)}")
         if not user.is_authenticated:
             return
 

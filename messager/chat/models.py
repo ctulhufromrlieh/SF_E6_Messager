@@ -7,7 +7,7 @@ class Profile(models.Model):
     # sel_cat_types = [("NONE", "None"), ("USER", "User"), ("ROOM", "Room")]
 
     user = models.OneToOneField(User, on_delete=models.CASCADE)
-    avatar_image = models.ImageField(upload_to='uploads/')
+    avatar_image = models.ImageField(upload_to='uploads/', null=True, blank=True)
     selected_category = models.IntegerField(default=-1)
     selected_chat = models.IntegerField(default=-1)
 

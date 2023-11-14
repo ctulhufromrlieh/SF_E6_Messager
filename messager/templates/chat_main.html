@@ -34,4 +34,13 @@
             <input type="button" id="message-editor-send" name="message-editor-send" value="Отправить" />
         </div>                    
     </div>
+    <div id="pnl-user-data">
+<!--        <form method="post" id="frm-user-data">-->
+            <label for="user-data-name">Имя пользователя:</label>
+            <input type="text" id="user-data-name" name="user-data-name" />
+            <label for="user-data-avatar">Аватар пользователя:</label>
+            <input type="file" id="user-data-avatar" name="user-data-avatar" accept="image/png, image/jpeg, image/gif" />
+            <input type="button" value="Изменить" id="user-data-send" name="user-data-send" onclick="uploadUserForm()" />
+<!--        </form>-->
+    </div>
 {% endblock content %}
