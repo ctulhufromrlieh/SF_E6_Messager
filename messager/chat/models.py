@@ -15,6 +15,13 @@ class Profile(models.Model):
     def has_avatar(self):
         return bool(self.avatar_image)
 
+    @property
+    def avatar_image_url(self):
+        if self.has_avatar:
+            return self.avatar_image.url
+        else:
+            return ""
+
     def __str__(self):
         return f"{self.pk}: {self.user.username}"
 

@@ -3,16 +3,11 @@ from django.http import HttpResponse, JsonResponse
 from django.db.models import F, Q
 from django.views.decorators.csrf import csrf_exempt
 
-from rest_framework import viewsets
-from rest_framework import permissions
-
-from .serializers import *
 from .models import *
 
-# from .models import ChatUser
 from .models import Profile
 from .forms import UploadImageForm
-from chat.util_funcs import get_avatar_image_url, get_profile_avatar_image_urls
+from chat.util_funcs import get_profile_avatar_image_urls
 
 
 def upload_image(request):
@@ -43,30 +38,31 @@ def get_chat_user_l(request):
 
     print(lst)
 
-    # data = list(values)
-    if bool(request.user.profile.avatar_image):
-        my_avatar_url = request.user.profile.avatar_image.url
-    else:
-        my_avatar_url = ""
+
+    # if bool(request.user.profile.avatar_image):
+    #     my_avatar_url = request.user.profile.avatar_image.url
+    # else:
+    #     my_avatar_url = ""
+    # my_avatar_url = get_avatar_image_url(request.user.profile.avatar_image)
+    my_avatar_url = request.user.profile.avatar_image_url
     data = {
         "list": list(values),
         "me": {
             "id": request.user.profile.id,
             "username": request.user.profile.user.username,
-            "avatar_image_url": my_avatar_url
+            "avatar_image_url": my_avatar_url,
+            "sel_cat": request.user.profile.selected_category,
+            "sel_chat": request.user.profile.selected_chat,
         }
     }
-    # print(data)
-    return JsonResponse(data, safe=False)  # or JsonResponse({'data': data})
+    return JsonResponse(data, safe=False)
 
 
 def get_chat_room_l(request):
-    # qs = ChatRoom.objects.all().values("id", "name")
     qs = ChatRoom.objects.all()
-    # qs = qs.annotate(owner_id=F('owner__id'))
-    values = ChatRoom.objects.all().values("id", "name", "owner_id")
+    values = qs.values("id", "name", "owner_id")
     data = list(values)
-    # print(data)
+
     return JsonResponse(data, safe=False)  # or JsonResponse({'data': data})
 
 
@@ -75,16 +71,13 @@ def get_messages_for_profile(profile):
     sel_chat = profile.selected_chat
 
     if sel_cat == 0:
-        # qs = PersonalMessage.objects.filter(dest_user=sel_chat)
-
         criterion1 = Q(dest_user=sel_chat)
         criterion2 = Q(sender__id=sel_chat)
         qs = PersonalMessage.objects.filter(criterion1 | criterion2).order_by("creation_date")
         qs = qs.annotate(username=F('sender__user__username'))
-        # print("get_messages_for_profile: sel_cat == 0: after annotate")
+
         values = qs.values("id", "sender_id", "text", "username")
         data = list(values)
-
         return data
     elif sel_cat == 1:
         qs = RoomMessage.objects.filter(dest_room=sel_chat).order_by("creation_date")
@@ -103,19 +96,12 @@ def select_chat(request, sel_cat, sel_chat):
         profile.selected_category = sel_cat
         profile.selected_chat = sel_chat
         profile.save()
-        # print(f"select_chat {sel_cat} | {sel_chat}")
-        # print("before get_messages_for_profile")
+
         messages = get_messages_for_profile(profile)
-        # print("messages got")
         profile_avatar_image_urls = get_profile_avatar_image_urls()
-        # print("profile_avatar_image_urls got")
-        # print(profile_avatar_image_urls)
         for curr_message in messages:
             curr_message["avatar_image_url"] = profile_avatar_image_urls[curr_message["sender_id"]]
-            # print(profile_avatar_image_urls[curr_message["sender_id"]])
 
-        print("messages:")
-        print(messages)
         data = {
             "valid": len(messages) > 0,
             "messages": messages
@@ -129,39 +115,25 @@ def select_chat(request, sel_cat, sel_chat):
 @csrf_exempt
 def set_user_data(request):
     try:
-        print("set_user_data start")
         profile = request.user.profile
 
-        # for key, value in request.POST.items():
-        #     print(f'Key, value: {key}, {value}')
-            # profile.user.username = request.POST[]
-        # print(request.POST)
-
-        print("set_user_data before username")
         new_username = request.POST['username']
         if new_username:
             profile.user.username = new_username
             profile.user.save()
 
-        print("set_user_data before avatar_image")
-        # avatar_image = request.FILES['avatar_image']
         avatar_image = request.FILES.get('avatar_image', None)
-        print("set_user_data before avatar_image set")
         if avatar_image:
             profile.avatar_image = avatar_image
         else:
             profile.avatar_image = None
-
-        print("set_user_data save")
-        # profile.user.save()
         profile.save()
 
         data = {
             "username": profile.user.username,
-            "avatar_image_url": get_avatar_image_url(profile.avatar_image)
+            # "avatar_image_url": get_avatar_image_url(profile.avatar_image)
+            "avatar_image_url": profile.avatar_image_url
         }
-
-        print(get_avatar_image_url(profile.avatar_image))
 
         return JsonResponse(data, status=200)
     except:
@@ -193,6 +165,7 @@ def change_chat_room(request, id, name):
         return JsonResponse(data, status=200)
     else:
         return JsonResponse({}, status=403)
+
 
 def delete_chat_room(request, id):
     chatroom = ChatRoom.objects.get(pk=id)

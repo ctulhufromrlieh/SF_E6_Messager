@@ -2,26 +2,21 @@ from django.db.models.signals import pre_save, post_save, pre_delete
 from django.dispatch import receiver
 from django.contrib.auth.models import User
 
-from asgiref.sync import async_to_sync
-import json
 import channels.layers
 
 from chat.consumers import ChatConsumer
-
 from chat.models import Profile, ChatRoom, PersonalMessage, RoomMessage
-from chat.util_funcs import get_avatar_image_url
+# from chat.util_funcs import get_avatar_image_url
 
 
 @receiver(post_save, sender=User)
 def create_user_profile(sender, instance, created, **kwargs):
-    # print('create_user_profile')
     if created:
         Profile.objects.create(user=instance)
 
 
 @receiver(post_save, sender=User)
 def save_user_profile(sender, instance, **kwargs):
-    # print('save_user_profile')
     if hasattr(instance, 'profile'):
         instance.profile.save()
 
@@ -69,8 +64,6 @@ def user_changed(sender, instance, **kwargs):
 
 @receiver(post_save, sender=Profile)
 def post_profile_changed(sender, instance, created, **kwargs):
-    # print("post_profile_changed")
-    # print(sender, instance, created)
     channel_layer = channels.layers.get_channel_layer()
     ChatConsumer.base_profile_changed(channel_layer, sender, instance, created, **kwargs)
 

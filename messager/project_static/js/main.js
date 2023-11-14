@@ -59,7 +59,7 @@ function select(dest, id, elem){
   });
 }
 
-function init_user_list(){
+function initUserList(){
   fetch(urlGetChatUserList)
   .then((response) => {
     const result = response.json();
@@ -67,14 +67,14 @@ function init_user_list(){
   })
   .then((data) => {
     refreshUserList(data.list, data.me)
-    init_room_list()
+    initRoomList()
   })
   .catch(() => {
     console.log('init_user_list error') 
   });
 }
 
-function init_room_list(){
+function initRoomList(){
   fetch(urlGetChatRoomList)
   .then((response) => {
     const result = response.json();
@@ -124,7 +124,6 @@ function messageChangeChatRoom(id, name){
   })
   .then((data) => {
     console.log(data)
-    // alert(name)
   })
   .catch(() => {
     console.log('messageChangeChatRoom error') 
@@ -152,9 +151,6 @@ function deleteElementsOfClass(className){
   for (let currUserElemIndex = userElems.length - 1;currUserElemIndex >= 0; currUserElemIndex--){
     userElems[currUserElemIndex].remove()
   }
-  // for (let currUserElem of userElems){
-    // currUserElem.remove()
-  // }
 }
 
 function createUserElem(id, username, avatar_image_url){
@@ -162,10 +158,8 @@ function createUserElem(id, username, avatar_image_url){
   newElem.className = 'user-elem'
   let avatarHTML = `<div class="avatar-elem avatar-elem-${id}">${getUserAvatarImageHTML(avatar_image_url)}</div>`
   let usernameHTML = `<span class="username-elem-${id}">${username}</span>`
-  // let newHTML =  avatarHTML + usernameHTML + `(id = ${id}, avatar_image_url=${avatar_image_url})`
   let newHTML =  avatarHTML + usernameHTML + `(id = ${id})`
   newElem.innerHTML = newHTML
-  // newElem.textContent = `(id = ${id})`
   newElem.id = `user-elem-${id}`
   newElem.addEventListener('click', (event) => {
     select(0, id, newElem)
@@ -186,14 +180,13 @@ function createRoomElem(id, name, owner_id){
     let newElem = document.createElement("div");
     newElem.className = 'room-elem'
     newElem.innerHTML = getInnerHTMLForRoomElem(id, name, owner_id)
-    // newElem.textContent = `${name} (id = ${id})`
     newElem.id = `room-elem-${id}`
     
     newElem.addEventListener('click', (event) => {
       select(1, id, newElem)
     })
 
-    console.log(newElem.children)
+    // console.log(newElem.children)
 
     if (owner_id == myProfileId){
       let btnChange = newElem.children[1]
@@ -222,6 +215,15 @@ function refreshUserList(users, me){
   })
   myProfileId = me.id
   refreshTitle(myProfileId, me.username, me.avatar_image_url)
+
+  let toSelectElem = null
+    if (me.sel_cat == 0){
+    toSelectElem = document.getElementById(`user-elem-${me.sel_chat}`)
+  }else if (me.sel_cat == 1){
+    toSelectElem = document.getElementById(`room-elem-${me.sel_chat}`)
+  }
+
+  select(me.sel_cat, me.sel_chat, toSelectElem)
 }
 
 function refreshRoomList(rooms){
@@ -293,7 +295,7 @@ function changeChatRoom(id, name, owner_id){
 }
 
 function deleteChatRoom(id, name, owner_id){
-  if ((selectedDest == 0) & (selectedElem == id)){
+  if ((selectedDest == 0) & (selectedId == id)){
     select(-1, -1, null)
   }
   let chatRoomElem = document.getElementById(`room-elem-${id}`)
@@ -305,18 +307,16 @@ function deleteChatRoom(id, name, owner_id){
 function addMessage(sender_id, username, avatar_image_url, text){
   let pnlMessages = document.getElementsByClassName('messages-panel')[0]
   let newElem = document.createElement("div");
-  // newElem.className = 'message-elem'
-  // newElem.innerHTML = `<b><span class="username-elem-${id}">${username}</span></b>: ${text}`
+  
   let avatarHTML = `<div class="avatar-elem avatar-elem-${sender_id}">${getUserAvatarImageHTML(avatar_image_url)}</div>`
   let usernameHTML = `<span class="username-elem-${sender_id}">${username}</span>`
   newElem.innerHTML = avatarHTML + usernameHTML + `<span>: ${text}</span>`
-  // newElem.innerHTML = `<div class="avatar-elem avatar-elem-${sender_id}">${getUserAvatarImageHTML(avatar_image_url)}</div> \
-    // <span class="username-elem username-elem-${sender_id}">${username}</span><span>: ${text}</span>`
+  
   newElem.className = 'message-elem'
   pnlMessages.append(newElem)
 }
 
-function message_handler(data_text){
+function messageHandler(data_text){
   console.log(data_text)
   data = JSON.parse(data_text)
   if (data.msg_type == 'user_list'){
@@ -363,11 +363,6 @@ async function uploadUserForm(){
   .catch(() => {
     console.log('uploadUserForm error') 
   });
-
-  // await fetch('/upload.php', {
-  //   method: "POST", 
-  //   body: formData
-  // });  
 }
 
 function initialize(){
@@ -390,24 +385,14 @@ function initialize(){
 
   socket = new WebSocket('ws://127.0.0.1:8000/ws');
 
-  init_user_list()
-  // init_room_list()
-
+  initUserList()
+  
   socket.onopen = function(e) {
-    // socket.send(JSON.stringify({
-    //   message: 'Hello from Js client'
-    // }));
-    // socket.send(JSON.stringify({
-    //   get: 'user_list'
-    // }));
-    // socket.send(JSON.stringify({
-    //   get: 'room_list'
-    // }));
+    // nothing
   };
 
   socket.onmessage = function(event) {
-    message_handler(event.data)
-    // console.log(event.data)
+    messageHandler(event.data)
   };
 }
 
