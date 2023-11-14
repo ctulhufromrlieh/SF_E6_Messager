@@ -2,7 +2,7 @@
 Skill factory E6.9 task - project
 MESSAGER
 
-Created users - username / email / password
+Created users - username / email / password <br>
 root / root@root.root / root <br>
 qq / qq@qq.qq / qqqqqqqq (8 chars) <br>
 ww / ww@ww.ww / wwwwwwww (8 chars) <br>
